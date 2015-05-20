@@ -6,13 +6,15 @@ using System.Linq;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using Swift.Extensibility;
 
 namespace Swift.LocalLogin
 {
     /// <summary>
     /// Interaction logic for LocalLoginView.xaml
     /// </summary>
-    public partial class LocalLoginView : UserControl, IProfileProvider
+    public partial class LocalLoginView : UserControl, IProfileProvider, IPluginServiceUser
     {
         #region Properties
 
@@ -27,16 +29,23 @@ namespace Swift.LocalLogin
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             Username = UnBox.Text;
-            BtLogin.IsEnabled = !string.IsNullOrWhiteSpace(Username) && !string.IsNullOrWhiteSpace(Password);
+            BtLogin.IsEnabled = CanLogin();
         }
 
         private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         {
             Password = PwBox.Password;
-            BtLogin.IsEnabled = !string.IsNullOrWhiteSpace(Username) && !string.IsNullOrWhiteSpace(Password);
+            BtLogin.IsEnabled = CanLogin();
         }
 
         private void BtLogin_Click(object sender, RoutedEventArgs e)
+        {
+            Login();
+        }
+
+        private bool CanLogin() => !string.IsNullOrWhiteSpace(Username) && !string.IsNullOrWhiteSpace(Password);
+
+        private void Login()
         {
             if (_knownUsers.Any(_ => _.Item1 == Username && _.Item2 == Password))
             {
@@ -48,6 +57,19 @@ namespace Swift.LocalLogin
             {
                 TbRetry.Visibility = Visibility.Visible;
                 PwBox.Password = "";
+            }
+        }
+
+        private void PwBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && CanLogin()) Login();
+            if ((bool)CBRememberMe.IsChecked)
+            {
+                _pluginServices.GetSettingsStore<LocalLoginView>().Store(RememberedAccountSettingsKey, Username);
+            }
+            else if (_pluginServices.GetSettingsStore<LocalLoginView>().ContainsKey(RememberedAccountSettingsKey))
+            {
+                _pluginServices.GetSettingsStore<LocalLoginView>().DeleteEntry(RememberedAccountSettingsKey);
             }
         }
 
@@ -71,12 +93,28 @@ namespace Swift.LocalLogin
 
         public void LoginAsync()
         {
+            if (_pluginServices.GetSettingsStore<LocalLoginView>().ContainsKey(RememberedAccountSettingsKey))
+            {
+                var user = _pluginServices.GetSettingsStore<LocalLoginView>().Retrieve<string>(RememberedAccountSettingsKey);
+                if (!string.IsNullOrWhiteSpace(user))
+                {
+                    Username = user;
+                    UnBox.Text = user;
+                }
+            }
+            Dispatcher.Invoke(() => UnBox.Focus());
+        }
 
+        public void SetPluginServices(IPluginServices pluginServices)
+        {
+            _pluginServices = pluginServices;
         }
 
         #endregion
 
+        private IPluginServices _pluginServices;
         private List<Tuple<string, string>> _knownUsers = new List<Tuple<string, string>>();
+        private const string RememberedAccountSettingsKey = "RememberedAccount";
 
         public LocalLoginView()
         {
@@ -85,5 +123,6 @@ namespace Swift.LocalLogin
             // TODO load users from storage
             _knownUsers.Add(Tuple.Create("tim", "asd"));
         }
+
     }
 }

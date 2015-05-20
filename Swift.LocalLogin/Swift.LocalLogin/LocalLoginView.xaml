@@ -13,9 +13,10 @@
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0">
             <TextBlock Text="Username"/>
-            <TextBox x:Name="UnBox" Margin="0,2,0,6" TextChanged="TextBox_TextChanged"/>
+            <TextBox x:Name="UnBox" Margin="0,2,0,6" TextChanged="TextBox_TextChanged" PreviewKeyDown="PwBox_PreviewKeyDown"/>
             <TextBlock Text="Password"/>
-            <PasswordBox x:Name="PwBox" Margin="0,2,0,6" PasswordChanged="PasswordBox_PasswordChanged"/>
+            <PasswordBox x:Name="PwBox" Margin="0,2,0,6" PasswordChanged="PasswordBox_PasswordChanged" PreviewKeyDown="PwBox_PreviewKeyDown"/>
+            <CheckBox x:Name="CBRememberMe" Content="Remember Me" />
             <TextBlock x:Name="TbRetry" Foreground="Red" Text="Unrecognized user or password. Please try again." Margin="0,24,0,0" Visibility="Collapsed"/>
         </StackPanel>
         <Button x:Name="BtLogin" Click="BtLogin_Click" IsEnabled="False" Grid.Row="1" Content="Login"/>
