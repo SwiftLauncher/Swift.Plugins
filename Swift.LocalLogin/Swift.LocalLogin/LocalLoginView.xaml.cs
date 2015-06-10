@@ -1,30 +1,26 @@
-﻿using Swift.Extensibility.Services;
-using Swift.Extensibility.Services.Profile;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Swift.Extensibility;
+using Swift.Extensibility.Plugins;
+using Swift.Extensibility.Services;
+using Swift.Extensibility.Services.Profile;
 
 namespace Swift.LocalLogin
 {
     /// <summary>
     /// Interaction logic for LocalLoginView.xaml
     /// </summary>
-    public partial class LocalLoginView : UserControl, IProfileProvider, IPluginServiceUser
+    public partial class LocalLoginView : IProfileProvider, IPlugin
     {
-        #region Properties
-
         public string Username { get; set; }
 
         public string Password { get; set; }
-
-        #endregion
-
-        #region Handlers
 
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
@@ -49,7 +45,7 @@ namespace Swift.LocalLogin
         {
             if (_knownUsers.Any(_ => _.Item1 == Username && _.Item2 == Password))
             {
-                UserProfile = new UserProfile(Username, Convert.ToBase64String(new System.Security.Cryptography.MD5CryptoServiceProvider().ComputeHash(Encoding.Default.GetBytes(Password))));
+                UserProfile = new UserProfile(Username, new MD5CryptoServiceProvider().ComputeHash(Encoding.Default.GetBytes(Password)));
                 IsLoggedIn = true;
                 LoginCompleted?.Invoke(true);
             }
@@ -73,21 +69,17 @@ namespace Swift.LocalLogin
             }
         }
 
-        #endregion
-
-        #region IProfileProvider Implementation
-
         public string Description { get; } = "Provides a way to locally log into Swift.";
 
         public Uri Icon { get; } = new Uri("pack://application:,,,/Swift.LocalLogin;component/Logo_lightning_bg.png");
 
-        public bool IsLoggedIn { get; private set; } = false;
+        public bool IsLoggedIn { get; private set; }
 
-        public object LoginView { get; } = null;
+        public object LoginView { get; }
 
         public string ServiceName { get; } = "Swift-Local Login";
 
-        public IUserProfile UserProfile { get; private set; } = null;
+        public UserProfile UserProfile { get; private set; }
 
         public event Action<bool> LoginCompleted;
 
@@ -100,29 +92,32 @@ namespace Swift.LocalLogin
                 {
                     Username = user;
                     UnBox.Text = user;
+                    Dispatcher.Invoke(() => PwBox.Focus());
+                    return;
                 }
             }
             Dispatcher.Invoke(() => UnBox.Focus());
         }
 
-        public void SetPluginServices(IPluginServices pluginServices)
-        {
-            _pluginServices = pluginServices;
-        }
-
-        #endregion
-
+        [Import]
         private IPluginServices _pluginServices;
-        private List<Tuple<string, string>> _knownUsers = new List<Tuple<string, string>>();
+        private readonly List<Tuple<string, string>> _knownUsers = new List<Tuple<string, string>>();
         private const string RememberedAccountSettingsKey = "RememberedAccount";
 
         public LocalLoginView()
         {
             LoginView = this;
             InitializeComponent();
+        }
+
+        public int InitializationPriority { get; } = 0;
+        public void OnInitialization(InitializationEventArgs args)
+        {
             // TODO load users from storage
             _knownUsers.Add(Tuple.Create("tim", "asd"));
         }
 
+        public int ShutdownPriority { get; } = 0;
+        public void OnShutdown(ShutdownEventArgs args) { }
     }
 }
